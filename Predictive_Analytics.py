@@ -95,6 +95,7 @@ def calculate_distance_matrix(A,b,Y_train):
     return d
 
 def KNN(X_train,X_test,Y_train):
+    k = 6
     predicted_labels = []
     for x_t in X_test:
         distance_matrix = calculate_distance_matrix(X_train, x_t, Y_train)
