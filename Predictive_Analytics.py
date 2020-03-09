@@ -204,7 +204,7 @@ def SklearnVotingClassifier(x_train,y_train,x_test):
     y_pred = ensemble.predict(x_test)
     return y_pred
 
-def SKlearnKnn(x_train, x_test, N):
+def knn_(x_train, x_test, N):
     knn = KNeighborsClassifier(n_neighbors = 5)
     knn.fit(x_train, y_train)
     y_pred = knn.predict(x_test)
@@ -213,7 +213,7 @@ def SKlearnKnn(x_train, x_test, N):
     return y_pred
     
 
-def SKlearnKnnGrid(x_train, x_test, N):
+def knn_grid(x_train, x_test, N):
     params_knn = {'n_neighbors': [N],
              'weights' : ['distance'],
              'metric' : ['euclidean']}
@@ -226,7 +226,7 @@ def SKlearnKnnGrid(x_train, x_test, N):
     return y_pred
     
 
-def SVM(x_train, x_test, y_test):
+def SVM_(x_train, x_test, y_test):
     scaling = MinMaxScaler(feature_range=(-1,1)).fit(x_train)
     x_train = scaling.transform(x_train)
     x_test = scaling.transform(x_test)
