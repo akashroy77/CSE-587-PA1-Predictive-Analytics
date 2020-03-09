@@ -30,14 +30,14 @@ X = df.to_numpy()
 X = df_normalized.to_numpy()
 
 x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2)
-
+'''
 no_of_classes = 11
 
 knn = KNeighborsClassifier()
 clf = SVC()
 log_reg = LogisticRegression()
 decision_tree = DecisionTreeClassifier()
-
+'''
 def Accuracy(y_true,y_pred):
     """
     :type y_true: numpy.ndarray
@@ -204,7 +204,7 @@ def SklearnVotingClassifier(x_train,y_train,x_test):
     y_pred = ensemble.predict(x_test)
     return y_pred
 
-def knn_(x_train, x_test, N):
+def SKlearnKnn(x_train, x_test, N):
     knn = KNeighborsClassifier(n_neighbors = 5)
     knn.fit(x_train, y_train)
     y_pred = knn.predict(x_test)
@@ -213,7 +213,7 @@ def knn_(x_train, x_test, N):
     return y_pred
     
 
-def knn_grid(x_train, x_test, N):
+def SKlearnKnnGrid(x_train, x_test, N):
     params_knn = {'n_neighbors': [N],
              'weights' : ['distance'],
              'metric' : ['euclidean']}
@@ -226,7 +226,7 @@ def knn_grid(x_train, x_test, N):
     return y_pred
     
 
-def SVM_(x_train, x_test, y_test):
+def SVM(x_train, x_test, y_test):
     scaling = MinMaxScaler(feature_range=(-1,1)).fit(x_train)
     x_train = scaling.transform(x_train)
     x_test = scaling.transform(x_test)
