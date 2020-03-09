@@ -2,7 +2,10 @@
 """
 Predicitve_Analytics.py
 """
-
+from scipy.spatial import distance
+import numpy as np
+import pandas as pd
+from copy import deepcopy
 
 def Accuracy(y_true,y_pred):
     """
@@ -30,13 +33,34 @@ def WCSS(Clusters):
     :Clusters List[numpy.ndarray]
     :rtype: float
     """
+    wcss = 0
+    wcss_clusters = []
+    for cluster in Clusters:
+        sum_of_elements = np.sum(cluster)
+        cluster_centroid = sum_of_elements * (1/cluster.shape[0])
+        distances = 0
+        for i in cluster:
+            distances += distance.euclidean(i, cluster_centroid)
+        wcss_clusters.append(distances)
+    wcss_clusters = np.asarray(wcss_clusters)
+    wcss = np.sum(wcss_clusters)/(wcss_clusters.shape[0])
+    return wcss
+
 def ConfusionMatrix(y_true,y_pred):
     
     """
     :type y_true: numpy.ndarray
     :type y_pred: numpy.ndarray
     :rtype: float
-    """  
+    """
+'''KNN Algorithm implementation'''
+
+def calculate_distance_matrix(A,b,Y_train):
+  d = np.linalg.norm(A - b, axis = 1)
+  d = np.column_stack((d, Y_train))
+  d = sorted(d, key =(lambda x: x[0]))
+  d = np.asarray(d)
+  return d
 
 def KNN(X_train,X_test,Y_train):
      """
@@ -46,6 +70,20 @@ def KNN(X_train,X_test,Y_train):
     
     :rtype: numpy.ndarray
     """
+     predicted_labels = []
+     for x_t in X_test:
+         distance_matrix = calculate_distance_matrix(X_train, x_t, Y_train)
+         distance_matrix = distance_matrix[0:k]
+         test_labels = distance_matrix[::, -1]
+         test_labels = test_labels.astype("int64")
+         counts = np.bincount(test_labels)
+         label = np.argmax(counts)
+         predicted_labels.append(label)
+     predicted_labels = np.asarray(predicted_labels)
+     return predicted_labels
+
+''' End of KNN Classifier Algorithm'''
+
 def RandomForest(X_train,Y_train,X_test):
     """
     :type X_train: numpy.ndarray
@@ -61,13 +99,50 @@ def PCA(X_train,N):
     :type N: int
     :rtype: numpy.ndarray
     """
-    
+
+''' K-Means Clustering Algorithm Implementation'''
+
+def create_empty_clusters(k):
+    clusters = []
+    for i in range(k):
+        clusters.append([])
+
+    return clusters
+
+def assigning_clusters(X,cluster_centers):
+    clusters  = create_empty_clusters(cluster_centers.shape[0])
+    for i in range(len(X)):
+        dist = np.linalg.norm(X[i] - cluster_centers, axis = 1)
+        dist = np.asarray(dist)
+        min_dist_index = np.argmin(dist)
+        clusters[min_dist_index].append(X[i])
+    clusters = np.asarray(clusters)
+    return clusters
+
+
 def Kmeans(X_train,N):
     """
     :type X_train: numpy.ndarray
     :type N: int
     :rtype: List[numpy.ndarray]
     """
+    X = X_train
+    k = N
+    cluster_centers_old = np.zeros((k, X.shape[1]))
+    cluster_centers = np.random.random((k, X.shape[1]))
+    error = np.sum(np.linalg.norm(cluster_centers - cluster_centers_old, axis=1))
+    while error != 0:
+        clusters = assigning_clusters(X, cluster_centers)
+        cluster_centers_old = deepcopy(cluster_centers)
+        for i, row in enumerate(clusters):
+            if len(row) == 0:
+                continue
+            cluster_centers[i] = np.mean(row)
+    ''' This step checks whether any data point is being assigned to a new cluster or not'''
+        error = np.sum(np.linalg.norm(cluster_centers - cluster_centers_old, axis=1))
+    return clusters
+''' End of K-means clustering algorithm'''
+
 
 def SklearnSupervisedLearning(X_train,Y_train,X_test):
     """
