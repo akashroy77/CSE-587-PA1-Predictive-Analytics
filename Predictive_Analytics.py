@@ -45,13 +45,21 @@ def Accuracy(y_true,y_pred):
     :rtype: float
     
     """
-
+    correct = 0
+    for i in range(len(y_true)):
+        if(y_true[i] == y_pred[i]):
+            correct += 1
+    return correct / float(len(y_true)) * 100.0
+    
 def Recall(y_true,y_pred):
      """
     :type y_true: numpy.ndarray
     :type y_pred: numpy.ndarray
     :rtype: float
     """
+    cm = ConfusionMatrix(y_true, y_pred)
+    recall = np.diag(cm) / np.sum(cm, axis = 1)
+    return np.mean(recall)
 
 def Precision(y_true,y_pred):
     """
@@ -59,18 +67,28 @@ def Precision(y_true,y_pred):
     :type y_pred: numpy.ndarray
     :rtype: float
     """
+    cm = ConfusionMatrix(y_true, y_pred)
+    precision = np.diag(cm) / np.sum(cm, axis = 0)
+    return np.mean(precision)
+
 def WCSS(Clusters):
     """
     :Clusters List[numpy.ndarray]
     :rtype: float
     """
+    wcss = 0
+    for i, row in enumerate(clusters):
+        if len(row) == 0:
+            continue
+        cluster_centroids = np.mean(row)
+        wcss += np.sum(np.linalg.norm(row - cluster_centroids, axis=1))
+    return wcss
 
 def confusion_matrix(y_pred, y_test, no_of_classes):
     result=(y_test*(no_of_classes+1))+y_pred
     a = np.histogram(result, bins=range(0,((no_of_classes+1)**2)+1))
     final_conf=a[0].reshape((no_of_classes+1,no_of_classes+1))
     return final_conf
-
 
 def plot_(y_pred, y_test, no_of_classes):
     data = confusion_matrix(y_pred, y_test,11)
@@ -84,9 +102,7 @@ def plot_(y_pred, y_test, no_of_classes):
     plt.colorbar()
     plt.show()
 
-
 '''KNN Algorithm implementation'''
-
 def calculate_distance_matrix(A,b,Y_train):
     d = np.linalg.norm(A - b, axis = 1)
     d = np.column_stack((d, Y_train))
@@ -109,6 +125,155 @@ def KNN(X_train,X_test,Y_train, k):
 
 ''' End of KNN Classifier Algorithm'''
 
+'''Starting Random Forest Algorithm'''
+
+'''This Function will check the number of classes (between 1-11) for the particular'''
+def number_of_class_in_a_set(input_set): 
+    label = input_set[:, -1]
+    unique_classes = np.unique(label)
+    return unique_classes
+
+'''This function will check which class has maximum number of counts in a given dataset'''
+def max_class(input_val):
+    label= input_val[:, -1]
+    max_val=0
+    index=[]
+    unique_classes,counts_unique_classes = np.unique(label, return_counts=True)
+    max_val=max(counts_unique_classes)
+    index=[i for i, e in enumerate(counts_unique_classes) if e == max_val]
+    max_class = unique_classes[index[0]]
+    return max_class
+
+'''Calculate all the possible splits'''
+def all_splits(input_values, features):
+    splits = {}
+    column=np.random.choice(input_values.shape[1],features )
+    for column_index in column:          
+        values = input_values[:, column]
+        unique_values = np.unique(values)
+        splits[column_index] = unique_values
+    return splits
+
+''' Creating Entropy for each node'''
+def class_entropy(data):
+    label = data[:, -1]
+    unique_classes,counts_unique_classes = np.unique(label, return_counts=True)
+    p = counts_unique_classes / counts_unique_classes.sum()
+    class_entropy = sum(p * -np.log2(p))
+    return class_entropy
+
+'''Creating the whole impurity using weighted average'''
+def entropy_impurity(n1, n2):   
+    n = len(n1) + len(n2)
+    c1 = len(n1) / n
+    c2 = len(n2) / n
+    entropy =  (c1 * class_entropy(n1)  + c2 * class_entropy(n2))
+    return entropy
+
+'''Creating Node for a Particular Decision'''
+def data_decision(input_feature, split_decision, threshold):
+    divided_nodes = input_feature[:, split_decision]
+    n1 = input_feature[divided_nodes <= threshold]
+    n2 = input_feature[divided_nodes >  threshold]  
+    return n1, n2
+
+'''Creating the decision node'''
+def decision_node_create(input_feature, input_feature_splits):
+   max_entropy = 100000000
+   split_column=0
+   split_value=0
+   for i in input_feature_splits:
+     for j in input_feature_splits[i]:
+       n1, n2 = data_decision(input_feature, i,j)
+       entropy = entropy_impurity(n1, n2) 
+       if entropy <= max_entropy:
+                max_entropy = entropy 
+                split_column = i
+                split_value = j
+   return split_column, split_value
+
+'''Decision Tree Training'''
+def decision_tree(df, count=0, random_features=7):
+    if count == 0:
+        global column,sample_size
+        column = df.columns        
+        sample_size=2 
+        data=df.values
+    else:
+        data = df           
+    classes=number_of_class_in_a_set(data)
+    num_classes=len(classes)
+    if ((num_classes==1)) or (len(data) < sample_size) or (count == 10):
+        feature_class = max_class(data)
+        return feature_class
+    else:    
+        count += 1 
+        potential_splits = all_splits(data, random_features)
+        feature, value = decision_node_create(data, potential_splits)
+        n1, n2 = data_decision(data, feature, value)
+        if len(n1) == 0 or len(n2) == 0:
+            feature_class = max_class(data)
+            return feature_class
+        feature_name = column[feature]
+        decision = "{} <= {}".format(feature_name, value)           
+        tree = {decision: []}
+        c1 = decision_tree(n1, count,random_features)
+        c2 = decision_tree(n2, count,random_features)
+        if c1 == c2:
+            tree = c1
+        else:
+            tree[decision].append(c1)
+            tree[decision].append(c2)
+        return tree
+
+''' Bagging the Data'''
+def bagging(train_df):
+    random_index = np.random.randint(low=0, high=len(train_df),size=400)
+    data_with_replacement = train_df.iloc[random_index]
+    return data_with_replacement
+
+'''This function will create an example tree from the questions'''
+def answer_prediction(example, tree):
+    question = list(tree.keys())[0]
+    feature_name, comparison_operator, value = question.split(" ")
+    if int(example[feature_name]) <= float(value):
+      answer = tree[question][0]
+    else:
+      answer = tree[question][1]
+    if not isinstance(answer, dict):
+        return answer
+    else:
+        residual_tree = answer
+        return answer_prediction(example, residual_tree)
+
+''' Main Algorithm this will call the decision tree'''
+def random_forest_classifier(train_df,features):
+    random_forest = []
+    number_of_trees=50
+    for i in range(number_of_trees):
+        data_with_replacement = bagging(train_df)
+        tree = decision_tree(data_with_replacement, random_features=features)
+        random_forest.append(tree)
+    return random_forest
+
+'''Decision Tree Prediction'''
+def decision_tree_predictions(test_df, tree):
+    predictions = test_df.apply(answer_prediction, args=(tree,), axis=1)
+    return predictions
+
+''' This will Predict the test data using decision tree'''    
+def random_forest_predictions(test_df, forest):
+    decisions = {}
+    for i in range(len(forest)):
+        column_name = "tree_{}".format(i)
+        predictions = decision_tree_predictions(test_df, tree=forest[i])
+        decisions[column_name] = predictions
+
+    decisions = pd.DataFrame(decisions)
+    all_predictions = decisions.mode(axis=1)[0]
+    
+    return all_predictions
+    
 def RandomForest(X_train,Y_train,X_test):
     """
     :type X_train: numpy.ndarray
@@ -117,14 +282,35 @@ def RandomForest(X_train,Y_train,X_test):
     
     :rtype: numpy.ndarray
     """
-    
+    df1=pd.DataFrame(x_train)
+    df2=pd.DataFrame(y_train)
+    test_df=pd.DataFrame(x_test)
+    train_df=pd.concat((df1,df2),axis=1)
+    train_df,test_df=create_dataframe(x_train,y_train,x_test)
+    train_df["label"] = train_df.iloc[:,-1]
+    train_df.drop(train_df.columns[48], inplace=True)
+    column_names = []
+    for column in train_df.columns:
+        column=str(column)
+        name = column.replace(" ", "_")
+        column_names.append(name)
+    train_df.columns = column_names
+    test_column_names = []
+    for column in test_df.columns:
+        column=str(column)
+        name = column.replace(" ", "_")
+        test_column_names.append(name)
+    test_df.columns = test_column_names
+    forest = random_forest_classifier(train_df,features=7)
+    predictions = random_forest_predictions(test_df, forest)
+    y_test=predictions.to_numpy()
+    return y_test
 
 def PCA(x_train, N):
     classes = []
     data = []
     rows = -1
     cols=0
-
     with open('D:/UB Courses/cse587/Assignment1/data.csv', 'r') as f:
         file = csv.reader(f, delimiter=' ')
         for i in file:
@@ -133,7 +319,6 @@ def PCA(x_train, N):
     file1 = pd.read_csv('D:/UB Courses/cse587/Assignment1/data.csv')
     for i in file1:     
         cols += 1
-    
     #calculate the mean of data
     mean_data = x_train.mean(0)    
     #normalization
@@ -257,7 +442,6 @@ def SVM_grid(x_train, x_test, y_test):
     plot_(y_pred, y_test, no_of_classes)
     return y_pred
 
-    
 def logReg(x_train, x_test, y_test):
     scaling = MinMaxScaler(feature_range=(-1,1)).fit(x_train)
 
@@ -280,7 +464,7 @@ def logReg(x_train, x_test, y_test):
     
 def logReg_grid(x_train, x_test, y_test):
     hyperparameters = dict(C=np.logspace(0,4), penalty=['l2'])
-    log = GridSearchCV(LogisticRegression(multi_class='auto', solver='lbfgs',max_iter=3000), hyperparameters)
+    log = Gridsearchcv(LogisticRegression(), hyperparameters, cv=2)
     log.fit(x_train, y_train)
     y_pred = log.predict(x_test)
     print('log_reg_grid: {}'.format(log.score(x_test, y_test)))
@@ -318,3 +502,6 @@ Make sure that plots are labeled and proper legends are used
 #https://towardsdatascience.com/ensemble-learning-using-scikit-learn-85c4531ff86a
 #https://chrisalbon.com/machine_learning/model_selection/hyperparameter_tuning_using_grid_search/
 #https://scikit-learn.org/stable/modules/tree.html
+#https://machinelearningmastery.com/implement-random-forest-scratch-python/
+#https://www.python-course.eu/Random_Forests.php
+#https://intellipaat.com/blog/what-is-random-forest-algorithm-in-python/
