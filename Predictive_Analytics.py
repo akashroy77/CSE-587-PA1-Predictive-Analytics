@@ -64,7 +64,13 @@ def WCSS(Clusters):
     :Clusters List[numpy.ndarray]
     :rtype: float
     """
-
+    wcss = 0
+    for i, row in enumerate(clusters):
+        if len(row) == 0:
+            continue
+        cluster_centroids = np.mean(row)
+        wcss += np.sum(np.linalg.norm(row - cluster_centroids, axis=1))
+    return wcss
 def confusion_matrix(y_pred, y_test, no_of_classes):
     result=(y_test*(no_of_classes+1))+y_pred
     a = np.histogram(result, bins=range(0,((no_of_classes+1)**2)+1))
